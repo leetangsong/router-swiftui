@@ -15,7 +15,7 @@
 在 Xcode 里添加 Swift Package：
 
 ```swift
-.package(url: "https://github.com/leetangsong/router-swiftui.git", from: "1.0.0")
+.package(url: "https://github.com/leetangsong/router-swiftui.git", from: "1.0.1")
 ```
 
 然后把 `Router` product 添加到 App target，并在代码中导入：
@@ -142,7 +142,7 @@ struct TabRootView: View {
         @Bindable var router = router
         
         TabView(selection: $router.selectedTab) {
-            NavigationStack(path: $router.path) {
+            NavigationStack(path: router.pathBinding(for: AppTab.home)) {
                 HomeView()
                     .navigationDestination(for: AnyRoutable.self) { route in
                         router.destination(route)
@@ -151,7 +151,7 @@ struct TabRootView: View {
             .routerTab(AppTab.home)
             .tabItem { Label("首页", systemImage: "house") }
             
-            NavigationStack(path: $router.path) {
+            NavigationStack(path: router.pathBinding(for: AppTab.settings)) {
                 SettingsView()
                     .navigationDestination(for: AnyRoutable.self) { route in
                         router.destination(route)
@@ -164,7 +164,7 @@ struct TabRootView: View {
 }
 ```
 
-切换 Tab 时，router 会保存当前 Tab 的路径，并恢复目标 Tab 的路径。
+每个 Tab 都绑定自己的 path，切换 Tab 时不会触发其他 `NavigationStack` 同步刷新。
 
 ## Sheet 和 FullScreenCover
 
@@ -322,4 +322,4 @@ let router = Router(
 - `Routable` 目前要求遵守 `Codable`，但 `AnyRoutable` 还没有内置状态持久化。如果需要恢复导航状态，可以在业务层实现路由编码/解码，或者后续扩展 `RouteRegistry` 的解码能力。
 - 路由类型建议保持小而稳定，使用 enum + associated value 会比较自然。
 - 调用 `router.destination(_:)` 前，需要先注册对应路由类型。
-- 多 Tab 模式下，当前选中的 Tab 使用共享的 `NavigationStack(path: $router.path)`。切换 Tab 时，router 会保存和恢复对应 Tab 的路径。
+- 多 Tab 模式下，每个 Tab 使用独立的 `NavigationStack(path: router.pathBinding(for: tab))`，避免多个 `NavigationStack` 同时监听同一个 path。

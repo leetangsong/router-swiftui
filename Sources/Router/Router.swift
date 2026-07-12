@@ -24,10 +24,11 @@ public final class Router {
     
     // MARK: - 导航状态
     
-    ///单个navigationStack使用
+    /// 单个 NavigationStack 使用。
+    /// 多 Tab 模式请使用 `pathBinding(for:)`，避免多个 NavigationStack 监听同一个 path。
     public var path: [AnyRoutable] = []
     
-    ///多个navigationStack
+    /// 多个 NavigationStack 使用，一个 Tab 对应一个 path。
     public var tabPaths: [AnyHashable: [AnyRoutable]] = [:]
     
     public var presentedSheet: AnyRoutable?
@@ -68,17 +69,18 @@ public final class Router {
     
     /// 是否可以返回
     public var canGoBack: Bool {
-        return !path.isEmpty
+        return !activePath.isEmpty
     }
     
     /// 当前路由
     public var currentRoute: AnyRoutable? {
-        return path.last
+        return activePath.last
     }
     
     
     /// 上一个路由
     public var previousRoute: AnyRoutable? {
+        let path = activePath
         guard path.count >= 2 else { return nil }
         return path[path.count - 2]
     }
@@ -102,19 +104,17 @@ public final class Router {
         self.selectedTab = initialTab
         self.registry = registry
         self.isLoggingEnabled = isLoggingEnabled
+        self.tabPaths[initialTab] = []
     }
     
     private func switchToTab(_ oldSelectedTab: AnyHashable?, _ selectedTab: AnyHashable?) {
         guard mode == .multi,
                 oldSelectedTab != selectedTab,
-                let oldSelectedTab = oldSelectedTab,
                 let selectedTab = selectedTab else { return }
         
-        // 保存当前路径
-        tabPaths[oldSelectedTab] = path
-        
-        // 恢复目标路径
-        path = tabPaths[selectedTab] ?? []
+        if tabPaths[selectedTab] == nil {
+            tabPaths[selectedTab] = []
+        }
     }
     
     
@@ -143,6 +143,22 @@ public final class Router {
     private func log(_ message: @autoclosure () -> String) {
         guard isLoggingEnabled else { return }
         print(message())
+    }
+    
+    private var activePath: [AnyRoutable] {
+        get {
+            guard mode == .multi, let selectedTab else {
+                return path
+            }
+            return tabPaths[selectedTab] ?? []
+        }
+        set {
+            guard mode == .multi, let selectedTab else {
+                path = newValue
+                return
+            }
+            tabPaths[selectedTab] = newValue
+        }
     }
 }
 
@@ -194,11 +210,13 @@ extension Router {
     
     /// 执行实际导航
     private func performPush(_ route: AnyRoutable) {
+        var path = activePath
         let from = path.last
         
         notifyEvent(.willPush(from: from, to: route))
         
         path.append(route)
+        activePath = path
         
         notifyEvent(.didPush(from: from, to: route))
         onNavigate?(route)
@@ -219,12 +237,14 @@ extension Router {
     
     /// 返回上一
     public func pop() {
+        var path = activePath
         guard let from = path.last else { return }
         let to = path.count >= 2 ? path[path.count - 2] : nil
         
         notifyEvent(.willPop(from: from, to: to))
         
         path.removeLast()
+        activePath = path
         
         notifyEvent(.didPop(from: from, to: to))
         onPop?()
@@ -232,11 +252,13 @@ extension Router {
     
     /// 返回根页面
     public func popToRoot() {
+        var path = activePath
         guard let from = path.last else { return }
         
         notifyEvent(.willPop(from: from, to: nil))
         
         path.removeAll()
+        activePath = path
         
         notifyEvent(.didPop(from: from, to: nil))
         onPop?()
@@ -251,12 +273,14 @@ extension Router {
     }
     
     private func popTo(_ route: AnyRoutable) {
+        var path = activePath
         guard let index = path.firstIndex(where: { $0 == route }),
               let from = path.last else { return }
         
         notifyEvent(.willPop(from: from, to: route))
         
         path.removeLast(path.count - index - 1)
+        activePath = path
         
         notifyEvent(.didPop(from: from, to: route))
         onPop?()
@@ -266,6 +290,7 @@ extension Router {
     /// - Parameters:
     ///   - step: 要返回的步数（1 = 返回一页）
     public func pop(step: Int) {
+        var path = activePath
         guard step > 0 && step <= path.count else { return }
         
         let from = path.last
@@ -277,12 +302,23 @@ extension Router {
         }
         
         path.removeLast(step)
+        activePath = path
         
         if let from {
             notifyEvent(.didPop(from: from, to: to))
         }
         
         onPop?()
+    }
+}
+
+extension Router {
+    public func pathBinding<Tab: Hashable>(for tab: Tab) -> Binding<[AnyRoutable]> {
+        let key = AnyHashable(tab)
+        return Binding(
+            get: { self.tabPaths[key] ?? [] },
+            set: { self.tabPaths[key] = $0 }
+        )
     }
 }
 

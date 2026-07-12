@@ -93,7 +93,7 @@ struct RootView: View {
         @Bindable var router = router
         
         TabView(selection: $router.selectedTab) {
-            NavigationStack(path: $router.path) {
+            NavigationStack(path: router.pathBinding(for: AppTab.home)) {
                 HomeView()
                     .navigationTitle("首页")
                     .navigationDestination(for: AnyRoutable.self) { route in
@@ -105,7 +105,7 @@ struct RootView: View {
                 Label("首页", systemImage: "house")
             }
             
-            NavigationStack(path: $router.path) {
+            NavigationStack(path: router.pathBinding(for: AppTab.settings)) {
                 SettingsView()
                     .navigationTitle("设置")
                     .navigationDestination(for: AnyRoutable.self) { route in
