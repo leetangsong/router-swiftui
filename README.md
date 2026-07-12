@@ -12,13 +12,31 @@
 
 ## 安装
 
+### Swift Package Manager
+
 在 Xcode 里添加 Swift Package：
 
 ```swift
-.package(url: "https://github.com/leetangsong/router-swiftui.git", from: "1.0.1")
+.package(url: "https://github.com/leetangsong/router-swiftui.git", from: "1.0.2")
 ```
 
-然后把 `Router` product 添加到 App target，并在代码中导入：
+然后把 `Router` product 添加到 App target。
+
+### CocoaPods
+
+如果已经发布到 CocoaPods trunk，可以在 iOS 项目的 `Podfile` 里添加：
+
+```ruby
+pod 'Router-SwiftUI', '~> 1.0.2'
+```
+
+如果还没有发布到 trunk，可以先通过 Git tag 引入：
+
+```ruby
+pod 'Router-SwiftUI', :git => 'https://github.com/leetangsong/router-swiftui.git', :tag => '1.0.2'
+```
+
+然后在代码中导入：
 
 ```swift
 import Router
